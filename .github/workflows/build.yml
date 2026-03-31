@@ -30,14 +30,10 @@ jobs:
             CODE_SIGN_IDENTITY="" \
             build
             
-      - name: intall gh cli 
-        run: |
-          brew install gh || echo "gh already installed"
-
-      - name: auth gh CLI
+      - name: auth
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: gh auth login --with-token <<< "$GITHUB_TOKEN"
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: echo "authed"
 
       - name: handle archival shit
         id: handle_release
