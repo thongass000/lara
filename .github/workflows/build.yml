@@ -20,7 +20,7 @@ jobs:
       - name: build
         run: |
           xcodebuild \
-            -project lara.xcodeproj \
+            -project tree/main/lara.xcodeproj \
             -scheme lara \
             -configuration Debug \
             -sdk iphoneos \
@@ -29,11 +29,11 @@ jobs:
             CODE_SIGN_IDENTITY="" \
             archive \
             -archivePath $PWD/build/lara.xcarchive
-
+      
           xcodebuild -exportArchive \
             -archivePath $PWD/build/lara.xcarchive \
-            -exportOptionsPlist tree/main/ExportOptions.plist \
-            -exportPath $PWD/build
+            -exportPath $PWD/build \
+            -exportOptionsPlist <(cat <<EOF<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd"><plist version="1.0"><dict><key>method</key><string>ad-hoc</string><key>compileBitcode</key><false/><key>signingStyle</key><string>automatic</string></dict></plist>EOF)
 
       - name: set up git user
         run: |
