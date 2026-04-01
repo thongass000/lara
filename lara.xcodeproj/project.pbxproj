@@ -45,6 +45,15 @@
 				assets/darksword.icon/icon.json,
 				assets/icon2.icon,
 				assets/icon2.icon/icon.json,
+				other/Assets.xcassets,
+				other/Assets.xcassets/Contents.json,
+				other/Assets.xcassets/AccentColor.colorset,
+				other/Assets.xcassets/AccentColor.colorset/Contents.json,
+				other/Assets.xcassets/unknown.imageset,
+				other/Assets.xcassets/unknown.imageset/Contents.json,
+				other/Assets.xcassets/unknown.imageset/DefaultIcon-60@3x~iphone.png,
+				other/Assets.xcassets/unknown.imageset/DefaultIcon-60@3x~iphone 1.png,
+				other/Assets.xcassets/unknown.imageset/DefaultIcon-60@3x~iphone 2.png,
 			);
 			target = CC1C8B382F71DF9C00206982 /* lara */;
 		};
