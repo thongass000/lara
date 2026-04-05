@@ -7,71 +7,183 @@
 
 import SwiftUI
 
-struct EditorView: View {
-    @ObservedObject private var mgr = laramgr.shared
-    
-    private let path = "/var/containers/Shared/SystemGroup/systemgroup.com.apple.mobilegestaltcache/Library/Caches/com.apple.MobileGestalt.plist"
-    private let modurl: URL
-
-    @State private var mgXML: String = ""
-    @State private var status: String?
-
-    init() {
-        let docs = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
-        modurl = docs.appendingPathComponent("MobileGestalt.plist")
+public struct EditorView: View {
+    public init(
+        sysplistpath: String = "/var/containers/Shared/SystemGroup/systemgroup.com.apple.mobilegestaltcache/Library/Caches/com.apple.MobileGestalt.plist"
+    ) {
+        self.sysplistpath = sysplistpath
     }
 
-    var body: some View {
+    private let sysplistpath: String
+
+    @State private var text: String = ""
+    @State private var status: String = ""
+    @State private var busy: Bool = false
+    @State private var lastsavedtext: String = ""
+
+    @State private var findquery: String = ""
+    @State private var findindex: String.Index? = nil
+
+    @State private var keyquery: String = ""
+    @State private var keyresult: String = ""
+
+    public var body: some View {
         NavigationStack {
             List {
-                Section {
-                    ScrollView {
-                        Text(mgXML)
-                            .font(.system(size: 13, design: .monospaced))
-                            .lineSpacing(1)
-                            .frame(height: 250)
-                            .truncationMode(.tail)
-                    }
-                    
-                    NavigationLink {
-                        
+                Button("Save") {
+                    savetosys()
+                }
+                .disabled(busy || text.isEmpty)
+                
+                Button("Validate") {
+                    validate()
+                }
+                .disabled(busy || text.isEmpty)
+                
+                Button("Format XML") {
+                    format()
+                }
+                .disabled(busy || text.isEmpty)
+                
+                Spacer()
+                
+                Text(hasunsavedchanges ? "Unsaved" : "Saved")
+                    .font(.caption)
+                    .foregroundColor(hasunsavedchanges ? .orange : .secondary)
+                
+                HStack(spacing: 8) {
+                    TextField("Find", text: $findquery)
+                    Button("Find Next") { findnext() }
+                        .disabled(findquery.isEmpty || text.isEmpty)
+                }
+                
+                HStack(spacing: 8) {
+                    TextField("Key Lookup", text: $keyquery)
+                    Button("Lookup") { lookupkey() }
+                        .disabled(keyquery.isEmpty || text.isEmpty)
+                    Text(keyresult)
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                        .lineLimit(1)
+                }
+                
+                if !status.isEmpty {
+                    Text(status)
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                }
+                
+                TextEditor(text: $text)
+                    .font(.system(.body, design: .monospaced))
+                    .overlay(RoundedRectangle(cornerRadius: 8).stroke(.secondary.opacity(0.3)))
+            }
+            .toolbar {
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Button {
+                        loadfromsys()
                     } label: {
-                        Text("View")
+                        Image(systemName: "arrow.clockwise")
                     }
-                } header: {
-                    Text("com.apple.MobileGestalt.plist")
+                    .disabled(busy)
                 }
             }
-            .navigationTitle("MobileGestalt")
-            .alert("Status", isPresented: .constant(status != nil)) {
-                Button("OK") { status = nil }
-            } message: {
-                Text(status ?? "")
-            }
-            .onAppear(perform: load)
+            .onAppear { loadfromsys() }
         }
     }
 
-    private func load() {
-        let fm = FileManager.default
-        let sysURL = URL(fileURLWithPath: path)
+    private var hasunsavedchanges: Bool { text != lastsavedtext }
 
-        if !fm.fileExists(atPath: modurl.path) {
-            do {
-                try fm.copyItem(at: sysURL, to: modurl)
-            } catch {
-                status = "failed to copy plist: \(error.localizedDescription)"
-                return
+    private func loadfromsys() {
+        busy = true; defer { busy = false }
+        do {
+            let data = try Data(contentsOf: URL(fileURLWithPath: sysplistpath))
+            let plist = try PropertyListSerialization.propertyList(from: data, options: [], format: nil)
+            let xml = try PropertyListSerialization.data(fromPropertyList: plist, format: .xml, options: 0)
+            text = String(data: xml, encoding: .utf8) ?? ""
+            lastsavedtext = text
+            status = "Loaded from system."
+        } catch { status = "Load failed: \(error.localizedDescription)" }
+    }
+
+    private func savetosys() {
+        busy = true; defer { busy = false }
+        do {
+            guard let data = text.data(using: .utf8) else { status = "Save failed: bad text"; return }
+            let plist = try PropertyListSerialization.propertyList(from: data, options: [], format: nil)
+            let xml = try PropertyListSerialization.data(fromPropertyList: plist, format: .xml, options: 0)
+            try xml.write(to: URL(fileURLWithPath: sysplistpath), options: .atomic)
+            text = String(data: xml, encoding: .utf8) ?? text
+            lastsavedtext = text
+            status = "Saved to system."
+        } catch { status = "Save failed: \(error.localizedDescription)" }
+    }
+
+    private func validate() {
+        do {
+            guard let data = text.data(using: .utf8) else { status = "Validate failed: bad text"; return }
+            _ = try PropertyListSerialization.propertyList(from: data, options: [], format: nil)
+            status = "Plist is valid."
+        } catch { status = "Plist invalid: \(error.localizedDescription)" }
+    }
+
+    private func format() {
+        do {
+            guard let data = text.data(using: .utf8) else { status = "Format failed: bad text"; return }
+            let plist = try PropertyListSerialization.propertyList(from: data, options: [], format: nil)
+            let xml = try PropertyListSerialization.data(fromPropertyList: plist, format: .xml, options: 0)
+            text = String(data: xml, encoding: .utf8) ?? text
+            status = "Formatted as XML."
+        } catch { status = "Format failed: \(error.localizedDescription)" }
+    }
+
+    private func findnext() {
+        guard !findquery.isEmpty else { return }
+        let start = findindex ?? text.startIndex
+        if let range = text.range(of: findquery, range: start..<text.endIndex) ??
+            text.range(of: findquery, range: text.startIndex..<start) {
+            findindex = range.upperBound
+            let lc = lineandcolumn(at: range.lowerBound, in: text)
+            status = "Found at line \(lc.line), col \(lc.col)."
+        } else {
+            status = "Not found."
+        }
+    }
+
+    private func lookupkey() {
+        do {
+            guard let data = text.data(using: .utf8) else { keyresult = "bad text"; return }
+            let plist = try PropertyListSerialization.propertyList(from: data, options: [], format: nil)
+            if let value = findkey(in: plist, key: keyquery) {
+                keyresult = "\(value)"
+            } else {
+                keyresult = "not found"
+            }
+        } catch { keyresult = "invalid plist" }
+    }
+
+    private func findkey(in obj: Any, key: String) -> Any? {
+        if let dict = obj as? [String: Any] {
+            if let v = dict[key] { return v }
+            for (_, v) in dict {
+                if let found = findkey(in: v, key: key) { return found }
+            }
+        } else if let arr = obj as? [Any] {
+            for v in arr {
+                if let found = findkey(in: v, key: key) { return found }
             }
         }
+        return nil
+    }
 
-        do {
-            let data = try Data(contentsOf: modurl)
-            let plist = try PropertyListSerialization.propertyList(from: data, options: [], format: nil)
-            let xmlData = try PropertyListSerialization.data(fromPropertyList: plist, format: .xml, options: 0)
-            mgXML = String(data: xmlData, encoding: .utf8) ?? "failed to encode XML"
-        } catch {
-            status = "failed to load plist: \(error.localizedDescription)"
+    private func lineandcolumn(at idx: String.Index, in s: String) -> (line: Int, col: Int) {
+        var line = 1, col = 1
+        var i = s.startIndex
+        while i < idx {
+            if s[i] == "\n" { line += 1; col = 1 } else { col += 1 }
+            i = s.index(after: i)
         }
+        return (line, col)
     }
 }
+

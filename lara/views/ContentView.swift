@@ -147,6 +147,10 @@ struct ContentView: View {
                                     FontPicker(mgr: mgr)
                                 }
 
+                                NavigationLink("Custom Overwrite") {
+                                    CustomOverwriteView(mgr: mgr)
+                                }
+
                                 NavigationLink("DirtyZero (Broken)") {
                                     ZeroView(mgr: mgr)
                                 }
@@ -206,13 +210,12 @@ struct ContentView: View {
                                 }
                                 
                                 if 1 == 2 {
+                                    NavigationLink("MobileGestalt") {
+                                        EditorView()
+                                    }
                                     
                                     NavigationLink("Passcode Theme") {
                                         PasscodeView(mgr: mgr)
-                                    }
-
-                                    NavigationLink("MobileGestalt") {
-                                        EditorView()
                                     }
                                 }
                             }
