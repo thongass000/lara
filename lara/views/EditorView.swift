@@ -82,7 +82,7 @@ struct EditorView: View {
                         
                         Picker("", selection: $selectedSubType) {
                             Text("Original (\(String(ogSubType)))").tag(ogSubType)
-                            ForEach(SubType.allCases) { subtype in
+                            ForEach(SubType.allCases.filter { $0.rawValue != ogSubType }) { subtype in
                                 Text(subtype.displayName).tag(subtype.rawValue)
                             }
                         }
