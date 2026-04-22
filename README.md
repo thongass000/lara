@@ -121,5 +121,5 @@ respringing is needed to apply springboard changes such as font changes.
 - AlfieCG for libgrabkernel2
 - Everyone who contributed!
 
-<br><br><br><br>
+<br>
 <div align="center">a beautiful kexploit ♥️</div>
