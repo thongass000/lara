@@ -399,7 +399,6 @@ struct LogsView: View {
                     .foregroundColor(.red)
                 }
             }
-            .
         }
     }
 }
