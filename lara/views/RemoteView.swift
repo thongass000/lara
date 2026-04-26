@@ -61,32 +61,6 @@ struct RemoteView: View {
             }
 
             Section {
-                Stepper(value: $columns, in: 1...dockMaxColumns) {
-                    HStack {
-                        Text("Dock columns")
-                        Spacer()
-                        Text("\(columns)")
-                            .foregroundColor(.secondary)
-                            .monospacedDigit()
-                    }
-                }
-                .onChange(of: rcdockunlimited) { _ in
-                    if !rcdockunlimited, columns > 10 {
-                        columns = 10
-                    }
-                }
-
-                Button {
-                    run("Apply Dock Columns=\(columns)") {
-                        let result = set_dock_icon_count(mgr.sbProc, Int32(columns))
-                        return "set_dock_icon_count(\(columns)) -> \(result)"
-                    }
-                } label: {
-                    Text("Apply Dock Columns")
-                }
-            }
-
-            Section {
                 Stepper(value: $hsColumns, in: 1...10) {
                     HStack {
                         Text("Home screen columns")
@@ -116,8 +90,32 @@ struct RemoteView: View {
                 } label: {
                     Text("Apply Home Screen Grid")
                 }
-            } header: {
-                Text("Home Screen Grid")
+            }
+
+            Section {
+                Stepper(value: $columns, in: 1...dockMaxColumns) {
+                    HStack {
+                        Text("Dock columns")
+                        Spacer()
+                        Text("\(columns)")
+                            .foregroundColor(.secondary)
+                            .monospacedDigit()
+                    }
+                }
+                .onChange(of: rcdockunlimited) { _ in
+                    if !rcdockunlimited, columns > 10 {
+                        columns = 10
+                    }
+                }
+
+                Button {
+                    run("Apply Dock Columns=\(columns)") {
+                        let result = set_dock_icon_count(mgr.sbProc, Int32(columns))
+                        return "set_dock_icon_count(\(columns)) -> \(result)"
+                    }
+                } label: {
+                    Text("Apply Dock Columns")
+                }
             }
 
             Section {
