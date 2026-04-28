@@ -138,7 +138,7 @@ if things get weird later, **Delete Kernelcache Data** in Settings wipes the cac
 ## installation
 
 <p align="center">
-  <a href="https://celloserenity.github.io/altdirect/?url=https://raw.githubusercontent.com/rooootdev/lara/refs/heads/main/source.json" target="_blank">
+  <a href="https://celloserenity.github.io/altdirect/?url=https://github.com/rooootdev/lara/releases/download/latest/source.json" target="_blank">
     <img src="https://github.com/CelloSerenity/altdirect/blob/main/assets/png/AltSource_Blue.png?raw=true" alt="Add AltSource" width="200">
   </a>
   <a href="https://github.com/rooootdev/lara/releases/download/latest/lara.ipa" target="_blank">

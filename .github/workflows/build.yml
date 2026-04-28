@@ -9,10 +9,15 @@ permissions:
 jobs:
   build:
     runs-on: macos-26
-
+    outputs:
+      version: ${{ steps.meta.outputs.version }}
+      iso_date: ${{ steps.meta.outputs.iso_date }}
+      timestamp: ${{ steps.meta.outputs.timestamp }}
     steps:
       - name: checkout
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       - name: setup xcode
         uses: maxim-lobanov/setup-xcode@v1
         with:
@@ -21,10 +26,44 @@ jobs:
         run: xcodebuild -version
       - name: install ldid
         run: brew install ldid
+      - name: generate version + timestamp
+        id: meta
+        run: |
+          BASE_VERSION=$(xcodebuild -showBuildSettings | grep MARKETING_VERSION | head -n1 | awk '{print $3}')
+          TIMESTAMP=$(date -u +"%Y%m%d%H%M%S")
+          DATE=$(date -u +"%Y%m%d")
+          ISO_DATE=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+          SHA=$(git rev-parse --short HEAD)
+          RUN_NUMBER=${{ github.run_number }}
+          VERSION="${BASE_VERSION}-${DATE}.${RUN_NUMBER}-${SHA}"
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "iso_date=$ISO_DATE" >> $GITHUB_OUTPUT
+          echo "timestamp=$TIMESTAMP" >> $GITHUB_OUTPUT
       - name: build
         run: |
           chmod +x scripts/build_ipa.sh
           ./scripts/build_ipa.sh
+      - name: patch version inside IPA
+        run: |
+          VERSION="${{ steps.meta.outputs.version }}"
+          cd build
+          unzip -q lara.ipa -d extracted
+          APP_PLIST="extracted/Payload/lara.app/Info.plist"
+          echo "Patching version to $VERSION"
+          /usr/libexec/PlistBuddy -c "Set :CFBundleShortVersionString $VERSION" "$APP_PLIST"
+          /usr/libexec/PlistBuddy -c "Set :CFBundleVersion $VERSION" "$APP_PLIST"
+          echo "Repacking IPA..."
+          rm -f lara.ipa
+          cd extracted
+          zip -qry ../lara.ipa Payload
+          cd ..
+          rm -rf extracted
+      - name: generate source.json + release notes
+        run: |
+          python3 scripts/generate_source.py \
+            "${{ steps.meta.outputs.version }}" \
+            "${{ steps.meta.outputs.iso_date }}" \
+            "${{ github.repository }}"
       - name: upload build artifact
         if: github.event_name == 'pull_request'
         uses: actions/upload-artifact@v4
@@ -33,16 +72,22 @@ jobs:
           path: |
             build/lara.ipa
             build/xcodebuild.log
-      - name: upload ipa for release
+      - name: upload artifact for release
         if: github.event_name != 'pull_request'
         uses: actions/upload-artifact@v4
         with:
           name: release-ipa
-          path: build/lara.ipa
+          path: |
+            build/lara.ipa
+            build/source.json
   release:
     if: github.event_name != 'pull_request'
     needs: build
     runs-on: ubuntu-latest
+    env:
+      VERSION: ${{ needs.build.outputs.version }}
+      ISO_DATE: ${{ needs.build.outputs.iso_date }}
+      TIMESTAMP: ${{ needs.build.outputs.timestamp }}
     steps:
       - name: checkout
         uses: actions/checkout@v4
@@ -57,7 +102,7 @@ jobs:
       - name: create release tag
         id: tag
         run: |
-          TAG="build_$(date +'%Y%m%d%H%M%S')-$(git rev-parse --short HEAD)"
+          TAG="build_${TIMESTAMP}-$(git rev-parse --short HEAD)"
           echo "TAG=$TAG" >> $GITHUB_ENV
       - name: get last 12h commits
         id: commits
@@ -86,13 +131,29 @@ jobs:
                 release_id: latestRelease.id
               });
             }
+      - name: format release body
+        run: |
+          BUILT_AT_UTC=$(date -u -d "${ISO_DATE}" +"%a %b %d %H:%M:%S %Y")
+          BUILT_AT_DATE=$(date -u -d "${ISO_DATE}" +"%Y-%m-%d")
+          SHA=$(git rev-parse HEAD)
+          BODY="## Build Info
+          Built at (UTC): \`$BUILT_AT_UTC\`
+          Built at (UTC date): \`$BUILT_AT_DATE\`
+          Commit SHA: $SHA
+          Version: \`${VERSION}\`
+          **Changes in the last 12 hours**
+          $COMMITS"
+          echo "RELEASE_BODY<<EOF" >> $GITHUB_ENV
+          echo "$BODY" >> $GITHUB_ENV
+          echo "EOF" >> $GITHUB_ENV
       - name: create new release
         uses: softprops/action-gh-release@v1
         with:
           tag_name: latest
           name: Latest Build
-          body: ${{ env.COMMITS }}
+          body: ${{ env.RELEASE_BODY }}
           files: |
             build/lara.ipa
+            build/source.json
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
