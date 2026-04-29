@@ -147,6 +147,7 @@ jobs:
           Built at (UTC date): \`$BUILT_AT_DATE\`
           Commit SHA: $SHA
           Version: \`${VERSION}\`
+          
           **Changes in the last 12 hours**
           $COMMITS"
           echo "RELEASE_BODY<<EOF" >> $GITHUB_ENV
