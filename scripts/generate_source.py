@@ -64,8 +64,7 @@ Version: {version}
 	text = re.sub(r"\n+", "\n", text)
 	return text
 
-
-def build_source(version, iso_date, repo):
+def build_source(version, iso_date, repo, size):
 	download_url = f"https://github.com/{repo}/releases/download/latest/lara.ipa"
 	release_url = f"https://github.com/{repo}/releases/tag/latest"
 	description = fetch_description()
@@ -107,7 +106,7 @@ def build_source(version, iso_date, repo):
 					{
 						"version": version,
 						"date": iso_date,
-						"size": 3450675,
+						"size": size,
 						"downloadURL": download_url,
 						"localizedDescription": release_notes,
 						"minOSVersion": "15.0"
@@ -120,9 +119,9 @@ def build_source(version, iso_date, repo):
 
 
 def main():
-	if len(sys.argv) != 4:
+	if len(sys.argv) != 5:
 		print(
-			"usage: generate_source.py <version> <iso_date> <repo>",
+			"usage: generate_source.py <version> <iso_date> <repo> <size>",
 			file=sys.stderr
 		)
 		sys.exit(1)
@@ -130,8 +129,9 @@ def main():
 	version = sys.argv[1]
 	iso_date = sys.argv[2]
 	repo = sys.argv[3]
+	size = int(sys.argv[4])
 
-	data = build_source(version, iso_date, repo)
+	data = build_source(version, iso_date, repo, size)
 	Path("build").mkdir(exist_ok=True)
 	with open("build/source.json", "w", encoding="utf-8") as f:
 		json.dump(data, f, indent=2, ensure_ascii=False)
